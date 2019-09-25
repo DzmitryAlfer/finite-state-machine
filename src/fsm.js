@@ -9,6 +9,10 @@ class State {
         this._transitions[name] = state;
     }
 
+    isTransitionExists(tranName) {
+        return !!this._transitions[tranName];
+    }
+
     getNextStateFromTransition(tranName) {
         return this._transitions[tranName];
     }
@@ -51,7 +55,7 @@ class FSM {
             });
         });
 
-        this._currentState = this._states[config.initial];
+        this._initalState = this._currentState = this._states[config.initial];
     }
 
     /**
@@ -67,23 +71,35 @@ class FSM {
      * @param state
      */
     changeState(state) {
-        this._currentState = this._states[state];
+        const changedState = this._states[state];
 
-        if(!this._currentState) {
+        if(!changedState) {
             throw new Error('State does not exist');
         }
+
+        this._currentState = changedState;
     }
 
     /**
      * Changes state according to event transition rules.
      * @param event
      */
-    trigger(event) {}
+    trigger(event) {
+        const nextState = this._currentState.getNextStateFromTransition(event);
+
+        if(!nextState) {
+            throw new Error('Unknown transition');
+        }
+
+        this._currentState = nextState;
+    }
 
     /**
      * Resets FSM state to initial.
      */
-    reset() {}
+    reset() {
+        this._currentState = this._initalState;
+    }
 
     /**
      * Returns an array of states for which there are specified event transition rules.
@@ -91,7 +107,21 @@ class FSM {
      * @param event
      * @returns {Array}
      */
-    getStates(event) {}
+    getStates(event) {
+        return Object.values(this._states).reduce((result, state) => {
+            if(event) {
+                if(state.isTransitionExists(event)) {
+                    result.push(state.Name);
+                    return result;
+                }
+            } else {
+                result.push(state.Name);
+                return result;
+            }
+
+            return result;
+        }, []);
+    }
 
     /**
      * Goes back to previous state.
