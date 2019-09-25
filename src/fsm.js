@@ -32,7 +32,14 @@ class FSM {
             throw new Error("config is null");
         }
 
+        this._stateHistory = [];
+        this._undoStateHistory = [];
+
         this._parseConfig(config);
+    }
+
+    get _CurrentState(){
+        return this._stateHistory[this._stateHistory.length - 1];
     }
 
     _parseConfig(config) {
@@ -55,7 +62,8 @@ class FSM {
             });
         });
 
-        this._initalState = this._currentState = this._states[config.initial];
+        this._initalState = this._states[config.initial];
+        this.changeState(this._initalState.Name);
     }
 
     /**
@@ -63,7 +71,8 @@ class FSM {
      * @returns {String}
      */
     getState() {
-        return this._currentState.Name;
+        const currentState = this._CurrentState;
+        return currentState.Name;
     }
 
     /**
@@ -77,7 +86,10 @@ class FSM {
             throw new Error('State does not exist');
         }
 
-        this._currentState = changedState;
+        //this._currentState = changedState;
+
+        this._stateHistory.push(changedState);
+        this._undoStateHistory = [];
     }
 
     /**
@@ -85,20 +97,26 @@ class FSM {
      * @param event
      */
     trigger(event) {
-        const nextState = this._currentState.getNextStateFromTransition(event);
+        const nextState = this._CurrentState.getNextStateFromTransition(event);
 
         if(!nextState) {
             throw new Error('Unknown transition');
         }
 
-        this._currentState = nextState;
+        //this._currentState = nextState;
+
+        this._stateHistory.push(nextState);
+        this._undoStateHistory = [];
     }
 
     /**
      * Resets FSM state to initial.
      */
     reset() {
-        this._currentState = this._initalState;
+        //this._currentState = this._initalState;
+
+        this._stateHistory = [this._initalState];
+        this._undoStateHistory = [];
     }
 
     /**
@@ -128,19 +146,41 @@ class FSM {
      * Returns false if undo is not available.
      * @returns {Boolean}
      */
-    undo() {}
+    undo() {
+        if(this._stateHistory.length === 1){
+            return false;
+        }
+
+        var currentState = this._stateHistory.pop();
+        this._undoStateHistory.push(currentState);
+
+        return true;
+    }
 
     /**
      * Goes redo to state.
      * Returns false if redo is not available.
      * @returns {Boolean}
      */
-    redo() {}
+    redo() {
+        if(this._undoStateHistory.length === 0){
+            return false;
+        }
+
+        const nextState = this._undoStateHistory.pop();
+        this._stateHistory.push(nextState);
+
+        return true;
+    }
 
     /**
      * Clears transition history
      */
-    clearHistory() {}
+    clearHistory() {
+        const currentState = this._CurrentState;
+        this._stateHistory = [currentState];
+        this._undoStateHistory = [];
+    }
 }
 
 module.exports = FSM;
